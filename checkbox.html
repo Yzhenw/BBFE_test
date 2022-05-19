@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>CHECKBOX</title>
+    <style>
+      #box {
+        position: relative;
+        margin: 50px 0 0 50px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="box"></div>
+  </body>
+  <script type="text/javascript">
+    //创建checkbox组
+    var box = document.getElementById("box");
+    const row = 5,
+      col = 8,
+      boxW = col * 20,
+      boxH = row * 21;
+    box.style.width = boxW + "px";
+    box.style.height = boxH + "px";
+    const boxLeft = box.offsetLeft;
+    const boxTop = box.offsetTop;
+    for (let i = 0; i < row * col; i++) {
+      var checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      box.appendChild(checkbox);
+    }
+    const list = box.getElementsByTagName("input");
+
+    window.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+      Array.from(list).forEach((val, index) => {
+        if (val.checked) val.checked = false;
+      });
+      //定义初始点击点坐标(startX,startY)
+      const startX = event.clientX;
+      const startY = event.clientY;
+      let func_move = function (e) {
+        border.style.left =
+          e.clientX >= startX
+            ? startX - boxLeft + "px"
+            : e.clientX - boxLeft + "px";
+        border.style.top =
+          e.clientY >= startY
+            ? startY - boxTop + "px"
+            : e.clientY - boxTop + "px";
+        border.style.width = Math.abs(e.clientX - startX) + "px";
+        border.style.height = Math.abs(e.clientY - startY) + "px";
+        //定义框的左上坐标(borderL,borderT)和右下坐标(borderR,borderB)
+        const [borderL, borderT, borderR, borderB] = [
+          Math.min(e.clientX, startX),
+          Math.min(e.clientY, startY),
+          Math.max(e.clientX, startX),
+          Math.max(e.clientY, startY),
+        ];
+        if (
+          borderR > boxLeft &&
+          borderB > boxTop &&
+          borderL < boxLeft + boxW &&
+          borderT < boxTop + boxH
+        ) {
+          Array.from(list).forEach((val, index) => {
+            if (
+              val.offsetLeft + val.offsetWidth >= borderL - boxLeft &&
+              val.offsetLeft <= borderR - boxLeft &&
+              val.offsetTop + val.offsetHeight >= borderT - boxTop &&
+              val.offsetTop <= borderB - boxTop
+            ) {
+              val.checked = true;
+            }
+          });
+        }
+      };
+      let func_up = function () {
+        if (border) {
+          border.remove();
+        }
+        window.removeEventListener("mousemove", func_move);
+        window.removeEventListener("mouseup", func_up);
+      };
+      var border = document.createElement("div");
+      border.style.border = "1px dashed gray";
+      border.style.position = "absolute";
+      border.style.left = startX - boxLeft + "px";
+      border.style.top = startY - boxTop + "px";
+      box.appendChild(border);
+      //监听mousemove和mouseup事件
+      window.addEventListener("mousemove", func_move);
+      window.addEventListener("mouseup", func_up);
+    });
+  </script>
+</html>
