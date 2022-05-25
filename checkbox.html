@@ -15,7 +15,7 @@
   </body>
   <script type="text/javascript">
     //创建checkbox组
-    var box = document.getElementById("box");
+    let box = document.getElementById("box");
     const row = 5,
       col = 8,
       boxW = col * 20,
@@ -24,73 +24,103 @@
     box.style.height = boxH + "px";
     const boxLeft = box.offsetLeft;
     const boxTop = box.offsetTop;
+    /*
+      频繁重排重绘降低页面加载效率 尽量一次性将变更的DOM更新到DOM树上
+      1.可以借助文档片段对象实现 document.createDocumentFragment()
+      当文档片段被添加到页面上时本身并不会被添加到页面上，相当于一个容器。
+        1).创建文档片段对象
+          let frag = document.createDocumentFragment()
+        2).将子元素添加到文档片段对象中
+          frag.appendChild(子元素)
+        3).将文档片段对象一次性添加到页面上
+          父元素.appendChild(frag)
+      2.借助元素的innerHTML属性，将要添加的元素拼接成字符串再一次性添加到页面上。
+        (事实上在第一次写的过程中考虑过这种方法)
+        但发现如果想要再给父元素追加一个button标签，就又要修改innerHTML的值，不太方便。
+        且语法提示不好，似乎在字符串里写DOM比较容易报错。
+    */
+    let frag = document.createDocumentFragment();
     for (let i = 0; i < row * col; i++) {
-      var checkbox = document.createElement("input");
+      let checkbox = document.createElement("input");
       checkbox.type = "checkbox";
-      box.appendChild(checkbox);
+      frag.appendChild(checkbox);
     }
+    box.appendChild(frag);
     const list = box.getElementsByTagName("input");
 
-    window.addEventListener("mousedown", (event) => {
-      event.preventDefault();
-      Array.from(list).forEach((val, index) => {
-        if (val.checked) val.checked = false;
-      });
-      //定义初始点击点坐标(startX,startY)
-      const startX = event.clientX;
-      const startY = event.clientY;
-      let func_move = function (e) {
-        border.style.left =
-          e.clientX >= startX
-            ? startX - boxLeft + "px"
-            : e.clientX - boxLeft + "px";
-        border.style.top =
-          e.clientY >= startY
-            ? startY - boxTop + "px"
-            : e.clientY - boxTop + "px";
-        border.style.width = Math.abs(e.clientX - startX) + "px";
-        border.style.height = Math.abs(e.clientY - startY) + "px";
-        //定义框的左上坐标(borderL,borderT)和右下坐标(borderR,borderB)
-        const [borderL, borderT, borderR, borderB] = [
-          Math.min(e.clientX, startX),
-          Math.min(e.clientY, startY),
-          Math.max(e.clientX, startX),
-          Math.max(e.clientY, startY),
-        ];
-        if (
-          borderR > boxLeft &&
-          borderB > boxTop &&
-          borderL < boxLeft + boxW &&
-          borderT < boxTop + boxH
-        ) {
-          Array.from(list).forEach((val, index) => {
-            if (
-              val.offsetLeft + val.offsetWidth >= borderL - boxLeft &&
-              val.offsetLeft <= borderR - boxLeft &&
-              val.offsetTop + val.offsetHeight >= borderT - boxTop &&
-              val.offsetTop <= borderB - boxTop
-            ) {
-              val.checked = true;
-            }
-          });
-        }
-      };
-      let func_up = function () {
-        if (border) {
-          border.remove();
-        }
-        window.removeEventListener("mousemove", func_move);
-        window.removeEventListener("mouseup", func_up);
-      };
-      var border = document.createElement("div");
-      border.style.border = "1px dashed gray";
-      border.style.position = "absolute";
-      border.style.left = startX - boxLeft + "px";
-      border.style.top = startY - boxTop + "px";
-      box.appendChild(border);
-      //监听mousemove和mouseup事件
-      window.addEventListener("mousemove", func_move);
-      window.addEventListener("mouseup", func_up);
-    });
+    //鼠标事件监听
+    let func_down = function (event) {
+      {
+        event.preventDefault();
+        Array.from(list).forEach((val, index) => {
+          if (val.checked) val.checked = false;
+        });
+        //定义初始点击点坐标(startX,startY)
+        const startX = event.clientX;
+        const startY = event.clientY;
+
+        let func_move = function (e) {
+          border.style.left =
+            e.clientX >= startX
+              ? startX - boxLeft + "px"
+              : e.clientX - boxLeft + "px";
+          border.style.top =
+            e.clientY >= startY
+              ? startY - boxTop + "px"
+              : e.clientY - boxTop + "px";
+          border.style.width = Math.abs(e.clientX - startX) + "px";
+          border.style.height = Math.abs(e.clientY - startY) + "px";
+          //定义框的左上坐标(borderL,borderT)和右下坐标(borderR,borderB)
+          const [borderL, borderT, borderR, borderB] = [
+            Math.min(e.clientX, startX),
+            Math.min(e.clientY, startY),
+            Math.max(e.clientX, startX),
+            Math.max(e.clientY, startY),
+          ];
+          if (
+            borderR > boxLeft &&
+            borderB > boxTop &&
+            borderL < boxLeft + boxW &&
+            borderT < boxTop + boxH
+          ) {
+            Array.from(list).forEach((val, index) => {
+              if (
+                val.offsetLeft + val.offsetWidth >= borderL - boxLeft &&
+                val.offsetLeft <= borderR - boxLeft &&
+                val.offsetTop + val.offsetHeight >= borderT - boxTop &&
+                val.offsetTop <= borderB - boxTop
+              ) {
+                val.checked = true;
+              }
+            });
+          }
+        };
+
+        let func_up = function () {
+          if (border) {
+            border.remove();
+          }
+          // window.removeEventListener("mousedown", func_down);
+          /*
+          面试官说mousedown要remove不然会造成内存泄露
+          可以理解会造成内存泄露，但是观察还在进行，似乎不能在mouseup事件就移除对mousedown事件的监听
+          查了资料现在大部分浏览器是可以回收观察者处理函数的，这个地方先暂时不修改了
+          参考链接：https://cloud.tencent.com/developer/article/1340979
+          */
+          window.removeEventListener("mousemove", func_move);
+          window.removeEventListener("mouseup", func_up);
+        };
+        let border = document.createElement("div");
+        border.style.border = "1px dashed gray";
+        border.style.position = "absolute";
+        border.style.left = startX - boxLeft + "px";
+        border.style.top = startY - boxTop + "px";
+        box.appendChild(border);
+        //监听mousemove和mouseup事件
+        window.addEventListener("mousemove", func_move);
+        window.addEventListener("mouseup", func_up);
+      }
+    };
+    window.addEventListener("mousedown", func_down);
   </script>
 </html>
